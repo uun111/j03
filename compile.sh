@@ -18,6 +18,7 @@ javac -d build/classes \
     src/main/java/com/gameengine/components/RenderComponent.java \
     src/main/java/com/gameengine/graphics/Renderer.java \
     src/main/java/com/gameengine/core/GameEngine.java \
+    src/main/java/com/gameengine/core/GameLogic.java \
     src/main/java/com/gameengine/scene/Scene.java \
     src/main/java/com/gameengine/example/GameExample.java
 

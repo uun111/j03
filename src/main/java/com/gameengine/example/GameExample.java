@@ -3,8 +3,8 @@ package com.gameengine.example;
 import com.gameengine.components.*;
 import com.gameengine.core.GameObject;
 import com.gameengine.core.GameEngine;
+import com.gameengine.core.GameLogic;
 import com.gameengine.graphics.Renderer;
-import com.gameengine.input.InputManager;
 import com.gameengine.math.Vector2;
 import com.gameengine.scene.Scene;
 
@@ -27,6 +27,7 @@ public class GameExample {
                 private Renderer renderer;
                 private Random random;
                 private float time;
+                private GameLogic gameLogic;
                 
                 @Override
                 public void initialize() {
@@ -34,6 +35,7 @@ public class GameExample {
                     this.renderer = engine.getRenderer();
                     this.random = new Random();
                     this.time = 0;
+                    this.gameLogic = new GameLogic(this);
                     
                     // 创建游戏对象
                     createPlayer();
@@ -46,10 +48,10 @@ public class GameExample {
                     super.update(deltaTime);
                     time += deltaTime;
                     
-                    // 调用基类的游戏逻辑方法
-                    handlePlayerInput();
-                    updatePhysics();
-                    checkCollisions();
+                    // 使用游戏逻辑类处理游戏规则
+                    gameLogic.handlePlayerInput();
+                    gameLogic.updatePhysics();
+                    gameLogic.checkCollisions();
                     
                     // 生成新敌人
                     if (time > 2.0f) {
@@ -68,29 +70,63 @@ public class GameExample {
                 }
                 
                 private void createPlayer() {
+                    // 创建葫芦娃 - 所有部位都在一个GameObject中
                     GameObject player = new GameObject("Player") {
+                        private Vector2 basePosition;
+                        
                         @Override
                         public void update(float deltaTime) {
                             super.update(deltaTime);
                             updateComponents(deltaTime);
+                            
+                            // 更新所有部位的位置
+                            updateBodyParts();
                         }
                         
                         @Override
                         public void render() {
-                            renderComponents();
+                            // 渲染所有部位
+                            renderBodyParts();
+                        }
+                        
+                        private void updateBodyParts() {
+                            TransformComponent transform = getComponent(TransformComponent.class);
+                            if (transform != null) {
+                                basePosition = transform.getPosition();
+                            }
+                        }
+                        
+                        private void renderBodyParts() {
+                            if (basePosition == null) return;
+                            
+                            // 渲染身体
+                            renderer.drawRect(
+                                basePosition.x - 8, basePosition.y - 10, 16, 20,
+                                1.0f, 0.0f, 0.0f, 1.0f  // 红色
+                            );
+                            
+                            // 渲染头部
+                            renderer.drawRect(
+                                basePosition.x - 6, basePosition.y - 22, 12, 12,
+                                1.0f, 0.5f, 0.0f, 1.0f  // 橙色
+                            );
+                            
+                            // 渲染左臂
+                            renderer.drawRect(
+                                basePosition.x - 13, basePosition.y - 5, 6, 12,
+                                1.0f, 0.8f, 0.0f, 1.0f  // 黄色
+                            );
+                            
+                            // 渲染右臂
+                            renderer.drawRect(
+                                basePosition.x + 7, basePosition.y - 5, 6, 12,
+                                0.0f, 1.0f, 0.0f, 1.0f  // 绿色
+                            );
                         }
                     };
                     
                     // 添加变换组件
                     TransformComponent transform = player.addComponent(new TransformComponent(new Vector2(400, 300)));
-                    
-                    // 添加渲染组件
-                    RenderComponent render = player.addComponent(new RenderComponent(
-                        RenderComponent.RenderType.RECTANGLE,
-                        new Vector2(20, 20),
-                        new RenderComponent.Color(0.0f, 1.0f, 0.0f, 1.0f)
-                    ));
-                    render.setRenderer(renderer);
                     
                     // 添加物理组件
                     PhysicsComponent physics = player.addComponent(new PhysicsComponent(1.0f));

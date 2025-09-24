@@ -19,7 +19,8 @@ src/main/java/com/gameengine/
 ├── core/           # 核心引擎类
 │   ├── GameEngine.java    # 游戏引擎主类
 │   ├── GameObject.java    # 游戏对象基类
-│   └── Component.java    # 组件基类
+│   ├── Component.java    # 组件基类
+│   └── GameLogic.java    # 游戏规则处理
 ├── components/     # 组件系统
 │   ├── TransformComponent.java  # 变换组件
 │   ├── PhysicsComponent.java    # 物理组件
@@ -93,8 +94,13 @@ PhysicsComponent physics = player.addComponent(
 
 ```java
 Scene gameScene = new Scene("MyGameScene") {
+    private GameLogic gameLogic;
+    
     @Override
     public void initialize() {
+        super.initialize();
+        this.gameLogic = new GameLogic(this);
+        
         // 创建游戏对象
         createPlayer();
         createEnemies();
@@ -103,10 +109,11 @@ Scene gameScene = new Scene("MyGameScene") {
     @Override
     public void update(float deltaTime) {
         super.update(deltaTime);
-        // 调用基类的游戏逻辑
-        handlePlayerInput();
-        updatePhysics();
-        checkCollisions();
+        
+        // 使用游戏逻辑类处理游戏规则
+        gameLogic.handlePlayerInput();
+        gameLogic.updatePhysics();
+        gameLogic.checkCollisions();
     }
     
     private void createPlayer() {
@@ -117,6 +124,28 @@ Scene gameScene = new Scene("MyGameScene") {
         // 创建敌人逻辑
     }
 };
+```
+
+### 使用游戏逻辑类
+
+```java
+// 创建游戏逻辑实例
+GameLogic gameLogic = new GameLogic(scene);
+
+// 在场景更新中调用游戏逻辑
+@Override
+public void update(float deltaTime) {
+    super.update(deltaTime);
+    
+    // 处理玩家输入
+    gameLogic.handlePlayerInput();
+    
+    // 更新物理系统
+    gameLogic.updatePhysics();
+    
+    // 检查碰撞
+    gameLogic.checkCollisions();
+}
 ```
 
 ### 处理输入
@@ -161,6 +190,36 @@ renderer.drawLine(x1, y1, x2, y2, r, g, b, a);
 - 碰撞后玩家会重置到中心位置
 - 蓝色小圆点是装饰元素
 
+## 架构设计
+
+### 职责分离
+
+```
+GameExample (游戏设定)
+    ↓ 使用
+GameLogic (游戏规则)
+    ↓ 操作
+Scene (场景管理)
+    ↓ 管理
+GameObject + Components (游戏对象)
+```
+
+### 核心组件
+
+- **GameEngine**: 游戏引擎主类，管理游戏循环
+- **Scene**: 场景管理，负责游戏对象的生命周期
+- **GameLogic**: 游戏规则处理，包含输入、物理、碰撞逻辑
+- **GameObject**: 游戏对象基类，使用组件系统
+- **Component**: 组件基类，实现ECS架构
+
+### 设计优势
+
+- **单一职责**: 每个类职责明确
+- **易于扩展**: 可以轻松添加新的游戏规则
+- **代码复用**: GameLogic可以在不同场景中重用
+- **维护性**: 游戏逻辑集中管理
+- **测试性**: 可以独立测试游戏逻辑
+
 ## 扩展功能
 
 这个游戏引擎提供了基础功能，你可以在此基础上扩展：
@@ -178,7 +237,9 @@ renderer.drawLine(x1, y1, x2, y2, r, g, b, a);
 - **无外部依赖**: 只使用Java标准库
 - **简单构建**: 使用shell脚本编译，无需Maven
 - **组件化设计**: 基于ECS架构，易于扩展
+- **职责分离**: Scene负责场景管理，GameLogic负责游戏规则
 - **跨平台**: 基于Swing，支持所有Java平台
+- **易于维护**: 代码结构清晰，职责明确
 
 ## 许可证
 
