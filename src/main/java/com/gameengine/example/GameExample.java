@@ -15,13 +15,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
-/**
- * 葫芦娃大战蜈蚣精 (完美优化最终版)
- * 零报错+子弹敌人击中消失+葫芦娃死亡逻辑+计分系统+完整玩法
- * 功能：1.WASD移动葫芦娃 2.自动发射火球 3.击中敌人+10分 4.敌人碰葫芦娃则死亡 5.无任何残留/卡顿
- */
 public class GameExample {
-    // ========== 游戏配置常量 ==========
     private static final int WINDOW_WIDTH = 800;
     private static final int WINDOW_HEIGHT = 600;
     private static final float PLAYER_SPEED = 250.0f;
@@ -44,10 +38,9 @@ public class GameExample {
                 private final List<GameObject> fireballs = new ArrayList<>();
                 private final List<GameObject> centipedes = new ArrayList<>();
                 private GameObject player;
-                // ===== ✅新增1：计分系统 =====
                 private int score = 0;
-                // ===== ✅新增2：游戏状态标记-是否死亡 =====
                 private boolean isPlayerDead = false;
+                private Vector2 mousePos = new Vector2(400, 300);
 
                 @Override
                 public void initialize() {
@@ -67,48 +60,38 @@ public class GameExample {
                 @Override
                 public void update(float deltaTime) {
                     super.update(deltaTime);
-                    // ✅ 如果葫芦娃死亡，停止所有游戏逻辑更新
                     if (isPlayerDead) return;
 
                     fireTimer += deltaTime;
                     spawnTimer += deltaTime;
+                    this.mousePos = inputManager.getMousePosition();
 
                     handlePlayerMovement(deltaTime);
-                    // 自动发射火球
                     if (fireTimer > FIRE_RATE) {
                         createFireball();
                         fireTimer = 0;
                     }
-                    // 无限生成蜈蚣精
                     if (spawnTimer > SPAWN_RATE) {
                         createCentipede();
                         spawnTimer = 0;
                     }
-                    // ✅ 优化子弹：飞出屏幕立刻消失+击中敌人立刻消失
                     updateFireballs(deltaTime);
-                    // 蜈蚣精追踪葫芦娃
                     updateCentipedes(deltaTime);
-                    // ✅ 优化碰撞：子弹击中敌人消失+加分 + 蜈蚣碰葫芦娃则死亡
                     checkCollisions();
                 }
 
                 @Override
                 public void render() {
-                    // 绘制深蓝色背景
                     renderer.drawRect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0.1f, 0.1f, 0.2f, 1.0f);
-                    // 渲染所有游戏对象
                     super.render();
+                    renderer.drawText("当前得分: " + score, 10, 20, 1.0f, 1.0f, 1.0f, 1.0f);
 
-                    // ===== ✅绘制计分：屏幕左上角 白色字体 永久显示 =====
-                  //  renderer.drawText("得分: " + score, 10, 20, 1.0f, 1.0f, 1.0f, 1.0f);
-
-                    // ===== ✅绘制死亡提示：屏幕中央 红色大字 死亡后显示 =====
-                    //if (isPlayerDead) {
-                    //    renderer.drawText("葫芦娃阵亡！游戏结束！", 300, 300, 1.0f, 0.0f, 0.0f, 1.0f);
-                    //}
+                    if (isPlayerDead) {
+                        renderer.drawText("葫芦娃阵亡！游戏结束！", 280, 280, 1.0f, 0.0f, 0.0f, 1.0f);
+                        renderer.drawText("最终得分: " + score, 350, 320, 1.0f, 0.8f, 0.0f, 1.0f);
+                    }
                 }
 
-                // 创建葫芦娃
                 private void createPlayer() {
                     player = new GameObject("葫芦娃") {
                         @Override
@@ -138,7 +121,6 @@ public class GameExample {
                     addGameObject(player);
                 }
 
-                // 葫芦娃移动控制
                 private void handlePlayerMovement(float deltaTime) {
                     if (player == null) return;
                     TransformComponent trans = player.getComponent(TransformComponent.class);
@@ -160,17 +142,30 @@ public class GameExample {
                     trans.setPosition(pos);
                 }
 
-                // 创建火球
                 private void createFireball() {
                     if (player == null) return;
                     TransformComponent playerTrans = player.getComponent(TransformComponent.class);
                     Vector2 playerPos = playerTrans.getPosition();
 
+                    Vector2 fireDir = new Vector2(
+                        mousePos.x - playerPos.x,
+                        mousePos.y - playerPos.y
+                    ).normalize();
+
                     GameObject fireball = new GameObject("火球") {
+                        private final Vector2 direction = fireDir;
+
                         @Override
                         public void update(float deltaTime) {
                             super.update(deltaTime);
                             updateComponents(deltaTime);
+                            TransformComponent trans = getComponent(TransformComponent.class);
+                            if (trans != null) {
+                                Vector2 pos = trans.getPosition();
+                                pos.x += direction.x * FIREBALL_SPEED * deltaTime;
+                                pos.y += direction.y * FIREBALL_SPEED * deltaTime;
+                                trans.setPosition(pos);
+                            }
                         }
 
                         @Override
@@ -180,7 +175,7 @@ public class GameExample {
                         }
                     };
 
-                    Vector2 firePos = new Vector2(playerPos.x, playerPos.y - 30);
+                    Vector2 firePos = new Vector2(playerPos.x, playerPos.y);
                     fireball.addComponent(new TransformComponent(firePos));
                     RenderComponent fireRender = fireball.addComponent(new RenderComponent(
                             RenderComponent.RenderType.RECTANGLE,
@@ -194,7 +189,6 @@ public class GameExample {
                     addGameObject(fireball);
                 }
 
-                // 创建蜈蚣精
                 private void createCentipede() {
                     GameObject centipede = new GameObject("蜈蚣精") {
                         @Override
@@ -225,32 +219,26 @@ public class GameExample {
                     addGameObject(centipede);
                 }
 
-private void updateFireballs(float deltaTime) {
-    Iterator<GameObject> fireIter = fireballs.iterator();
-    while (fireIter.hasNext()) {
-        GameObject fb = fireIter.next();
-        TransformComponent trans = fb.getComponent(TransformComponent.class);
-        
-        // 分支1：火球对象异常，拿不到位置组件 → 直接彻底删除
-        if (trans == null) {
-            fireIter.remove();    // 1. 从自己的火球集合删除
-            fb.destroy();         // 2. 火球对象彻底自毁（核心，足够解决所有问题）
-            continue;
-        }
+                private void updateFireballs(float deltaTime) {
+                    Iterator<GameObject> fireIter = fireballs.iterator();
+                    while (fireIter.hasNext()) {
+                        GameObject fb = fireIter.next();
+                        TransformComponent trans = fb.getComponent(TransformComponent.class);
+                        
+                        if (trans == null) {
+                            fireIter.remove();    
+                            fb.destroy();         
+                            continue;
+                        }
 
-        // 正常逻辑：更新火球坐标，让火球向上飞
-        Vector2 pos = trans.getPosition();
-        pos.y -= FIREBALL_SPEED * deltaTime;
-        trans.setPosition(pos);
+                        Vector2 pos = trans.getPosition();
+                        if (pos.y <= 0 || pos.x < 0 || pos.x > WINDOW_WIDTH || pos.y > WINDOW_HEIGHT) {
+                            fireIter.remove();    
+                            fb.destroy();         
+                        }
+                    }
+                }
 
-        // 分支2：火球飞出屏幕边界 → 彻底删除，无残留
-        if (pos.y <= 0 || pos.x < 0 || pos.x > WINDOW_WIDTH || pos.y > WINDOW_HEIGHT) {
-            fireIter.remove();    // 1. 从自己的火球集合删除
-            fb.destroy();         // 2. 火球对象彻底自毁（核心，足够解决所有问题）
-        }
-    }
-}
-                // 蜈蚣精追踪逻辑
                 private void updateCentipedes(float deltaTime) {
                     if (player == null) return;
                     TransformComponent playerTrans = player.getComponent(TransformComponent.class);
@@ -267,32 +255,29 @@ private void updateFireballs(float deltaTime) {
                     }
                 }
 
-                // ✅ 核心优化2：全部碰撞逻辑整合 | 子弹击中敌人消失+加分 | 蜈蚣碰葫芦娃死亡
                 private void checkCollisions() {
                     if (player == null || isPlayerDead) return;
                     TransformComponent playerTrans = player.getComponent(TransformComponent.class);
                     Vector2 playerPos = playerTrans.getPosition();
 
-                    // ========== 检测1：蜈蚣精碰到葫芦娃 → 葫芦娃死亡 ==========
                     for (GameObject cp : centipedes) {
                         TransformComponent cpTrans = cp.getComponent(TransformComponent.class);
                         if (cpTrans == null) continue;
                         Vector2 cpPos = cpTrans.getPosition();
                         float playerDistance = playerPos.distance(cpPos);
-                        // 距离小于30=碰撞，触发死亡
                         if (playerDistance < 30) {
                             isPlayerDead = true;
                             return;
                         }
                     }
 
-                    // ========== 检测2：子弹击中蜈蚣精 → 子弹+敌人消失 + 加10分 ==========
                     Iterator<GameObject> fireIter = fireballs.iterator();
                     while (fireIter.hasNext()) {
                         GameObject fb = fireIter.next();
                         TransformComponent fbTrans = fb.getComponent(TransformComponent.class);
                         if (fbTrans == null) {
                             fireIter.remove();
+                            fb.destroy();
                             continue;
                         }
                         Vector2 fbPos = fbTrans.getPosition();
@@ -303,15 +288,17 @@ private void updateFireballs(float deltaTime) {
                             TransformComponent cpTrans = cp.getComponent(TransformComponent.class);
                             if (cpTrans == null) {
                                 centiIter.remove();
+                                cp.destroy();
                                 continue;
                             }
                             Vector2 cpPos = cpTrans.getPosition();
                             float hitDistance = fbPos.distance(cpPos);
 
-                            // 子弹击中敌人：子弹消失+敌人消失+得分+10
                             if (hitDistance < 25) {
                                 fireIter.remove();
+                                fb.destroy();
                                 centiIter.remove();
+                                cp.destroy();
                                 score += 10;
                                 break;
                             }
@@ -319,7 +306,6 @@ private void updateFireballs(float deltaTime) {
                     }
                 }
 
-                // 随机生成蜈蚣精位置
                 private Vector2 getRandomEdgePos() {
                     int side = random.nextInt(4);
                     float x = random.nextFloat() * WINDOW_WIDTH;
